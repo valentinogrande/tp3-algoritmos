@@ -1,4 +1,3 @@
-
 """
     Participantes:
                 1. Valentino Grande
@@ -14,12 +13,71 @@ import pickle
 import pwinput
 from pathlib import Path
 
+
 class CategoriaRegistro:
     def __init__(self):
         self.nro_categoria = 0
         self.nombre_categoria = ""
         self.pregunta = ""
         self.estado = ""
+
+
+def leer_numero_previo_categoria():
+    numero = 0
+
+    if os.path.getsize(CATEGORIAS_FISICO) > 0:
+        categoria_logico.seek(0, 0)
+        _ = pickle.load(categoria_logico)
+        reg_size = categoria_logico.tell()
+
+        categoria_logico.seek(-reg_size, 2)
+        reg = pickle.load(categoria_logico)
+
+        numero = int(reg.nro_categoria.strip())
+
+    return numero
+
+
+def pedir_nombre_categoria():
+    nombre = input("Introduce el nombre de la categoria: ").strip()
+    valido = False
+
+    while not valido:
+
+        if len(nombre) == 0 or len(nombre) > 30:
+            print("El nombre debe tener entre 1 y 30 caracteres")
+            nombre = input("Introduce el nombre de la categoria: ").strip()
+
+        elif buscar_categoria(nombre) != -1:
+            print("Ya existe una categoria con ese nombre")
+            nombre = input("Introduce el nombre de la categoria: ").strip()
+
+        else:
+            valido = True
+
+    return nombre
+
+
+def categoria_input():
+
+    reg = CategoriaRegistro()
+
+    reg.nro_categoria = str(leer_numero_previo_categoria() + 1).ljust(4, " ")
+
+    nombre = pedir_nombre_categoria()
+    reg.nombre_categoria = nombre.ljust(30, " ")
+
+    pregunta = input("Introduce la pregunta: ").strip()
+    while len(pregunta) == 0 or len(pregunta) > 200:
+        print("La pregunta debe tener entre 1 y 200 caracteres")
+        pregunta = input("Introduce la pregunta: ").strip()
+
+    reg.pregunta = pregunta.ljust(200, " ")
+
+    reg.estado = "A"
+
+    return reg
+
 
 class OpcionesRegistro:
     def __init__(self):
@@ -28,17 +86,142 @@ class OpcionesRegistro:
         self.objeto = ""
         self.valor = 0
 
-class  JugadoresRegistro:
+
+def leer_numero_previo_opcion():
+    numero = 0
+
+    if os.path.getsize(OPCIONES_FISICO) > 0:
+        opciones_logico.seek(0, 0)
+        _ = pickle.load(opciones_logico)
+        reg_size = opciones_logico.tell()
+
+        opciones_logico.seek(-reg_size, 2)
+        reg = pickle.load(opciones_logico)
+
+        numero = int(reg.nro_opcion.strip())
+
+    return numero
+
+
+def buscar_categoria(nombre):
+    nro_categoria = -1
+    tamanio = os.path.getsize(CATEGORIAS_FISICO)
+
+    categoria_logico.seek(0, 0)
+
+    while categoria_logico.tell() < tamanio and nro_categoria == -1:
+        reg = pickle.load(categoria_logico)
+
+        if reg.nombre_categoria.strip().lower() == nombre.lower():
+            nro_categoria = int(reg.nro_categoria.strip())
+
+    return nro_categoria
+
+
+def opciones_input(nro_categoria):
+
+    reg = OpcionesRegistro()
+
+    reg.nro_opcion = str(leer_numero_previo_opcion() + 1).ljust(5, " ")
+    reg.nro_categoria = nro_categoria
+
+    objeto = input("Introduce el nombre del objeto: ").strip()
+    while len(objeto) == 0 or len(objeto) > 100:
+        print("El objeto debe tener entre 1 y 100 caracteres")
+        objeto = input("Introduce el nombre del objeto: ").strip()
+
+    reg.objeto = objeto.ljust(100, " ")
+
+    valor = input("Introduce el valor: ").strip()
+    while len(valor) > 10 or not valor.isdigit():
+        print("El valor debe ser un numero entero positivo de hasta 10 digitos")
+        valor = input("Introduce el valor: ").strip()
+
+    reg.valor = valor.ljust(10, " ")
+
+    return reg
+
+
+class JugadoresRegistro:
     def __init__(self):
         self.nombre = ""
-        self.creditos = 0
-        self.juegos = [[0, 0, 0, 0] for _ in range(2)]
+        self.creditos = 10000.0
+        # Fila 0: veces que gano, fila 1: veces que perdio
+        # Columna 0: mayor/menor, 1: numero secreto, 2: blackjack, 3: par/impar
+        self.juegos = [[0] * 4 for i in range(2)]
 
 
-MAX_JUGADORES = 10
+def buscar_nombre(nombre):
+    posicion = -1
+    tamanio = os.path.getsize(JUGADORES_FISICO)
+
+    jugadores_logico.seek(0, 0)
+
+    while jugadores_logico.tell() < tamanio and posicion == -1:
+        inicio = jugadores_logico.tell()
+        reg = pickle.load(jugadores_logico)
+
+        if reg.nombre.strip() == nombre:
+            posicion = inicio
+
+    return posicion
+
+
+def leer_jugador(posicion):
+    jugadores_logico.seek(posicion, 0)
+    reg = pickle.load(jugadores_logico)
+
+    return reg
+
+
+def alta_jugador(nombre):
+    reg = JugadoresRegistro()
+    reg.nombre = nombre.ljust(30, " ")
+
+    jugadores_logico.seek(0, 2)
+    posicion = jugadores_logico.tell()
+    pickle.dump(reg, jugadores_logico)
+    jugadores_logico.flush()
+
+    return posicion
+
+
+def pedir_jugador():
+    nombre = input("Ingrese su nombre (2 a 30 caracteres): ").strip()
+
+    while len(nombre) < 2 or len(nombre) > 30:
+        print("El nombre debe tener entre 2 y 30 caracteres")
+        nombre = input("Ingrese su nombre (2 a 30 caracteres): ").strip()
+
+    posicion = buscar_nombre(nombre)
+
+    if posicion != -1:
+        print(f"Bienvenido de nuevo {nombre}")
+
+    else:
+        posicion = alta_jugador(nombre)
+        print(f"Jugador {nombre} registrado con ${JugadoresRegistro().creditos}")
+
+    return posicion
+
+
+def registrar_resultado(posicion, juego, gano):
+    reg = leer_jugador(posicion)
+
+    if gano:
+        reg.juegos[0][juego] += 1
+    else:
+        reg.juegos[1][juego] += 1
+
+    jugadores_logico.seek(posicion, 0)
+    pickle.dump(reg, jugadores_logico)
+    jugadores_logico.flush()
+
+
 TAMANIO_MAZO = 52
 MAX_CARTAS_MANO = TAMANIO_MAZO
 CONTRASENA = "admin123"
+INTENTOS_CONTRASENA = 3
 
 
 RUTA = Path(__file__).resolve().parent
@@ -47,26 +230,17 @@ CATEGORIAS_FISICO = RUTA / "Categorias.dat"
 OPCIONES_FISICO = RUTA / "Opciones.dat"
 JUGADORES_FISICO = RUTA / "Jugadores.dat"
 
+categoria_logico = open(CATEGORIAS_FISICO, "r+b")
+opciones_logico = open(OPCIONES_FISICO, "r+b")
+jugadores_logico = open(JUGADORES_FISICO, "r+b")
 
-jugadores = [""] * MAX_JUGADORES
+NOMBRES_JUEGOS = ["Mayor o menor", "Numero secreto", "BlackJack", "Par o impar"]
 
-rachas_mayor_menor = [0] * MAX_JUGADORES
-mayor_menor_jugadas = [0] * MAX_JUGADORES
+numero_maximo_intentos_secreto = 5
 
-secreto_jugadas = [0] * MAX_JUGADORES
-secreto_ganadas = [0] * MAX_JUGADORES
-secreto_perdidas = [0] * MAX_JUGADORES
-
-blackjack_jugadas = [0] * MAX_JUGADORES
-blackjack_ganadas = [0] * MAX_JUGADORES
-
-parimpar_jugadas = [0] * MAX_JUGADORES
-parimpar_aciertos = [0] * MAX_JUGADORES
-creditos = [0] * MAX_JUGADORES
-
-cantidad_jugadores = 0
-
-numero_maximo_intentos_secreto = 6
+RONDAS_MAYOR_MENOR = 6
+ACIERTOS_PARA_GANAR = 4
+MINIMO_OPCIONES = 6
 
 RED = "\033[91m"
 DARK_RED = "\033[31m"
@@ -116,130 +290,249 @@ def clear():
         print("No se puede limpiar la pantalla")
 
 
-def buscar_jugador(nombre):
-    indice = -1
+def contar_opciones(nro_categoria):
+    cantidad = 0
+    tamanio = os.path.getsize(OPCIONES_FISICO)
+
+    opciones_logico.seek(0, 0)
+
+    while opciones_logico.tell() < tamanio:
+        reg = pickle.load(opciones_logico)
+
+        if int(reg.nro_categoria.strip()) == nro_categoria:
+            cantidad += 1
+
+    return cantidad
+
+
+def categoria_jugable(reg):
+    jugable = False
+
+    if reg.estado == "A":
+        jugable = contar_opciones(int(reg.nro_categoria.strip())) >= MINIMO_OPCIONES
+
+    return jugable
+
+
+def recorrer_categorias_jugables(mostrar):
+    cantidad = 0
+    tamanio = os.path.getsize(CATEGORIAS_FISICO)
+    posicion = 0
+
+    while posicion < tamanio:
+        categoria_logico.seek(posicion, 0)
+        reg = pickle.load(categoria_logico)
+        posicion = categoria_logico.tell()
+
+        if categoria_jugable(reg):
+            if mostrar:
+                print(f"    {reg.nro_categoria.strip()} - {reg.nombre_categoria.strip()}")
+            cantidad += 1
+
+    return cantidad
+
+
+def buscar_categoria_por_numero(nro_categoria):
+    encontrada = -1
+    tamanio = os.path.getsize(CATEGORIAS_FISICO)
+
+    categoria_logico.seek(0, 0)
+
+    while categoria_logico.tell() < tamanio and encontrada == -1:
+        inicio = categoria_logico.tell()
+        reg = pickle.load(categoria_logico)
+
+        if int(reg.nro_categoria.strip()) == nro_categoria:
+            encontrada = inicio
+
+    return encontrada
+
+
+def pedir_categoria():
+    reg = None
+
+    while reg is None:
+
+        try:
+
+            nro_categoria = int(input("Elegi el numero de categoria: "))
+            posicion = buscar_categoria_por_numero(nro_categoria)
+
+            if posicion == -1:
+                print("No existe una categoria con ese numero")
+
+            else:
+                categoria_logico.seek(posicion, 0)
+                candidata = pickle.load(categoria_logico)
+
+                if categoria_jugable(candidata):
+                    reg = candidata
+                else:
+                    print("Esa categoria no esta disponible para jugar")
+
+        except ValueError:
+            print("Ingrese un entero valido")
+
+    return reg
+
+
+def cargar_opciones(nro_categoria, objetos, valores):
+    cantidad = 0
+    tamanio = os.path.getsize(OPCIONES_FISICO)
+
+    opciones_logico.seek(0, 0)
+
+    while opciones_logico.tell() < tamanio:
+        reg = pickle.load(opciones_logico)
+
+        if int(reg.nro_categoria.strip()) == nro_categoria:
+            objetos[cantidad] = reg.objeto.strip()
+            valores[cantidad] = int(reg.valor.strip())
+            cantidad += 1
+
+    return cantidad
+
+
+def elegir_opcion(usadas, cantidad, actual):
+    disponibles = 0
     i = 0
 
-    while i < cantidad_jugadores:
-        if jugadores[i] == nombre:
-            indice = i
+    while i < cantidad:
+        if not usadas[i]:
+            disponibles += 1
         i += 1
 
-    return indice
+    # Si ya salieron todas, se vuelven a habilitar menos la que esta en juego
+    if disponibles == 0:
+        i = 0
+
+        while i < cantidad:
+            usadas[i] = i == actual
+            i += 1
+
+    elegida = random.randint(0, cantidad - 1)
+
+    while usadas[elegida]:
+        elegida = random.randint(0, cantidad - 1)
+
+    usadas[elegida] = True
+
+    return elegida
 
 
-def pedir_jugador():
-    global cantidad_jugadores
+def jugar_rondas_mayor_menor(categoria):
+    nro_categoria = int(categoria.nro_categoria.strip())
+    cantidad = contar_opciones(nro_categoria)
 
-    nombre = input("Ingrese su nombre (2 o mas caracteres): ")
+    objetos = [""] * cantidad
+    valores = [0] * cantidad
+    usadas = [False] * cantidad
 
-    while len(nombre) < 2:
-        nombre = input("Ingrese su nombre (2 o mas caracteres): ")
+    cargar_opciones(nro_categoria, objetos, valores)
 
-    indice = buscar_jugador(nombre)
+    aciertos = 0
+    actual = elegir_opcion(usadas, cantidad, -1)
+    ronda = 1
 
-    if indice != -1:
-        print("Bienvenido de nuevo", nombre)
+    while ronda <= RONDAS_MAYOR_MENOR:
 
-    else:
-        if cantidad_jugadores == MAX_JUGADORES:
-            print("No hay cupos para un nuevo jugador")
-            indice = -1
+        nueva = elegir_opcion(usadas, cantidad, actual)
 
+        print(f"\nRonda {ronda} de {RONDAS_MAYOR_MENOR}")
+        print(categoria.pregunta.strip())
+        print(f"1. {objetos[actual]} / 2. {objetos[nueva]}")
+
+        respuesta = input("Elegi 1 o 2: ")
+
+        while respuesta != "1" and respuesta != "2":
+            print("Opcion invalida")
+            respuesta = input("Elegi 1 o 2: ")
+
+        if valores[actual] >= valores[nueva]:
+            correcta = actual
         else:
-            indice = cantidad_jugadores
+            correcta = nueva
 
-            jugadores[indice] = nombre
-            rachas_mayor_menor[indice] = 0
-            mayor_menor_jugadas[indice] = 0
-            secreto_jugadas[indice] = 0
-            secreto_ganadas[indice] = 0
-            secreto_perdidas[indice] = 0
-            blackjack_jugadas[indice] = 0
-            blackjack_ganadas[indice] = 0
-            parimpar_jugadas[indice] = 0
-            parimpar_aciertos[indice] = 0
-            creditos[indice] = 1000
+        if respuesta == "1":
+            elegida = actual
+        else:
+            elegida = nueva
 
-            cantidad_jugadores += 1
+        print(f"{objetos[actual]} {valores[actual]} / {objetos[nueva]} {valores[nueva]}")
 
-    return indice
+        if valores[elegida] == valores[correcta]:
+            print("Correcto! Sumas 1 punto")
+            aciertos += 1
+        else:
+            print("Incorrecto")
+
+        print(f"Aciertos: {aciertos}")
+        input("Presione enter para continuar...")
+
+        actual = correcta
+        ronda += 1
+
+    return aciertos
 
 
 def mayor_menor():
 
-    indice = pedir_jugador()
+    posicion = pedir_jugador()
+    reg = leer_jugador(posicion)
+    nombre = reg.nombre.strip()
 
-    if indice == -1:
-        input("Presione enter para continuar...")
-        return
+    if reg.creditos <= 0:
+        print(f"{nombre} te quedaste sin credito, ya no podes jugar")
 
-    nombre = jugadores[indice]
-    mayor_menor_jugadas[indice] += 1
+    else:
 
-    racha_juego = 0
-    juego_terminado = False
-
-    numero = random.randint(1, 1000)
-
-    while not juego_terminado:
-
-        siguiente_numero = random.randint(1, 1000)
-
-        while siguiente_numero == numero:
-            siguiente_numero = random.randint(1, 1000)
-
-        print("Numero actual:", numero)
-
-        opcion = input("El siguiente numero sera mayor o menor?: ").lower()
-
-        while opcion != "mayor" and opcion != "menor":
-            opcion = input("Ingrese mayor o menor: ").lower()
-
-        acerto = (opcion == "menor" and siguiente_numero < numero) or (
-            opcion == "mayor" and siguiente_numero > numero
-        )
-
-        if acerto:
-
-            print("Correcto! El numero era:", siguiente_numero)
-
-            racha_juego += 1
-            numero = siguiente_numero
+        if recorrer_categorias_jugables(False) == 0:
+            print(f"No hay categorias activas con al menos {MINIMO_OPCIONES} opciones")
 
         else:
-            print("El juego esta terminado. El numero era:", siguiente_numero)
-            juego_terminado = True
 
-    print(nombre, "tu racha fue de:", racha_juego)
+            print(f"Tu credito es de: ${reg.creditos}")
+            apuesta = pedir_apuesta(reg.creditos)
 
-    if racha_juego > rachas_mayor_menor[indice]:
-        rachas_mayor_menor[indice] = racha_juego
+            print("\nCategorias:")
+            recorrer_categorias_jugables(True)
+
+            categoria = pedir_categoria()
+            aciertos = jugar_rondas_mayor_menor(categoria)
+
+            print(f"\nTerminaste con {aciertos} aciertos de {RONDAS_MAYOR_MENOR}")
+
+            if aciertos >= ACIERTOS_PARA_GANAR:
+                print(f"{nombre} ganaste ${apuesta}")
+                reg.creditos += apuesta
+                reg.juegos[0][0] += 1
+
+            else:
+                print(f"{nombre} perdiste ${apuesta}")
+                reg.creditos -= apuesta
+                reg.juegos[1][0] += 1
+
+            jugadores_logico.seek(posicion, 0)
+            pickle.dump(reg, jugadores_logico)
+            jugadores_logico.flush()
+
+            print(f"Tu credito ahora es: ${reg.creditos}")
 
     input("Presione enter para continuar...")
 
 
 def numero_secreto():
 
-    indice = pedir_jugador()
+    posicion = pedir_jugador()
 
-    if indice == -1:
-        input("Presione enter para continuar...")
-        return
-
-    secreto_jugadas[indice] += 1
-
-    secreto = random.randint(1, 100)
+    secreto =random.randint(1, 100)
 
     numero_intento = 0
     victoria = False
 
     while numero_intento < numero_maximo_intentos_secreto and not victoria:
 
-        print(
-            "Intentos restantes:",
-            numero_maximo_intentos_secreto - numero_intento,
-        )
+        print(f"Intentos restantes: {numero_maximo_intentos_secreto - numero_intento}")
 
         valido = False
         intento = 0
@@ -274,15 +567,13 @@ def numero_secreto():
                 print("El numero secreto es menor")
 
     if victoria:
-
-        secreto_ganadas[indice] += 1
-        print("Ganaste! Te llevo", numero_intento, "intentos")
+        print(f"Ganaste! Te llevo {numero_intento} intentos")
 
     else:
-
-        secreto_perdidas[indice] += 1
         print("Perdiste")
-        print("El numero era:", secreto)
+        print(f"El numero era: {secreto}")
+
+    registrar_resultado(posicion, 1, victoria)
 
     input("Presione enter para continuar...")
 
@@ -356,13 +647,8 @@ def sumar_puntos(cartas, cantidad):
 
 def blackjack():
 
-    indice = pedir_jugador()
-
-    if indice == -1:
-        input("Presione enter para continuar...")
-        return
-
-    nombre = jugadores[indice]
+    posicion = pedir_jugador()
+    nombre = leer_jugador(posicion).nombre.strip()
 
     jugar_otra = True
 
@@ -393,14 +679,12 @@ def blackjack():
         cantidad_cartas_banca += 1
         cantidad_mazo -= 1
 
-        blackjack_jugadas[indice] += 1
-
         puntos_jugador = sumar_puntos(cartas_jugador, cantidad_cartas_jugador)
         puntos_banca = sumar_puntos(cartas_banca, cantidad_cartas_banca)
 
-        print("\nCartas de la banca:", cartas_banca[0], "y", cartas_banca[1])
-        print("Tus cartas:", cartas_jugador[0], "y", cartas_jugador[1])
-        print("Tus puntos:", puntos_jugador)
+        print(f"\nCarta visible de la banca: {cartas_banca[0]}")
+        print(f"Tus cartas: {cartas_jugador[0]} y {cartas_jugador[1]}")
+        print(f"Tus puntos: {puntos_jugador}")
 
         se_paso = False
         turno_jugador = puntos_jugador < 21
@@ -422,8 +706,8 @@ def blackjack():
 
                 puntos_jugador = sumar_puntos(cartas_jugador, cantidad_cartas_jugador)
 
-                print("Sacaste:", carta)
-                print("Tus puntos:", puntos_jugador)
+                print(f"Sacaste: {carta}")
+                print(f"Tus puntos: {puntos_jugador}")
 
                 if puntos_jugador > 21:
                     se_paso = True
@@ -437,8 +721,11 @@ def blackjack():
 
         if se_paso:
             print("Te pasaste de 21. Gana la banca")
+            registrar_resultado(posicion, 2, False)
 
         else:
+
+            print(f"La banca da vuelta su carta: {cartas_banca[1]}")
 
             while puntos_banca <= 16:
                 carta = sacar_carta(mazo, cantidad_mazo)
@@ -448,21 +735,22 @@ def blackjack():
                 cantidad_cartas_banca += 1
 
                 puntos_banca = sumar_puntos(cartas_banca, cantidad_cartas_banca)
-                print("La banca saco:", carta)
+                print(f"La banca saco: {carta}")
 
-            print("Puntos de la banca:", puntos_banca)
-            print("Tus puntos:", puntos_jugador)
+            print(f"Puntos de la banca: {puntos_banca}")
+            print(f"Tus puntos: {puntos_jugador}")
 
             if puntos_banca > 21:
-                print("La banca se paso de 21. Ganaste", nombre)
-                blackjack_ganadas[indice] += 1
+                print(f"La banca se paso de 21. Ganaste {nombre}")
+                registrar_resultado(posicion, 2, True)
 
             elif puntos_jugador > puntos_banca:
-                print("Ganaste", nombre)
-                blackjack_ganadas[indice] += 1
+                print(f"Ganaste {nombre}")
+                registrar_resultado(posicion, 2, True)
 
             elif puntos_banca > puntos_jugador:
                 print("Gana la banca")
+                registrar_resultado(posicion, 2, False)
 
             else:
                 print("Empate")
@@ -477,23 +765,7 @@ def blackjack():
     input("Presione enter para continuar...")
 
 
-def par_impar():
-
-    indice = pedir_jugador()
-
-    if indice == -1:
-        input("Presione enter para continuar...")
-        return
-
-    nombre = jugadores[indice]
-
-    if creditos[indice] == 0:
-        print(nombre, "te quedaste sin credito, ya no podes jugar")
-        input("Presione enter para continuar...")
-        return
-
-    print("Tu credito es de: $", creditos[indice])
-
+def pedir_apuesta(credito):
     apuesta_valida = False
     apuesta = 0
 
@@ -506,7 +778,7 @@ def par_impar():
             if apuesta < 1:
                 print("La apuesta debe ser mayor a 0")
 
-            elif apuesta > creditos[indice]:
+            elif apuesta > credito:
                 print("No podes apostar mas de lo que tenes")
 
             else:
@@ -515,59 +787,75 @@ def par_impar():
         except ValueError:
             print("Ingrese un entero valido")
 
-    numero1 = random.randint(1, 6)
-    numero2 = random.randint(1, 6)
+    return apuesta
 
-    opcion = input("Par o impar?: ").lower()
 
-    while opcion != "par" and opcion != "impar":
-        opcion = input("Ingrese par o impar: ").lower()
+def par_impar():
 
-    suma = numero1 + numero2
+    posicion = pedir_jugador()
+    reg = leer_jugador(posicion)
+    nombre = reg.nombre.strip()
 
-    print("Los numeros fueron:", numero1, "y", numero2)
-    print("La suma es:", suma)
-
-    suma_es_par = suma % 2 == 0
-    gano = (opcion == "par" and suma_es_par) or (
-        opcion == "impar" and not suma_es_par
-    )
-
-    parimpar_jugadas[indice] += 1
-
-    if gano:
-
-        print(nombre, "ganaste")
-        parimpar_aciertos[indice] += 1
-        creditos[indice] += apuesta
+    if reg.creditos <= 0:
+        print(f"{nombre} te quedaste sin credito, ya no podes jugar")
 
     else:
 
-        print(nombre, "perdiste")
-        creditos[indice] -= apuesta
+        print(f"Tu credito es de: ${reg.creditos}")
 
-    print("Tu credito ahora es: $", creditos[indice])
+        apuesta = pedir_apuesta(reg.creditos)
+
+        numero1 = random.randint(1, 6)
+        numero2 = random.randint(1, 6)
+
+        opcion = input("Par o impar?: ").lower()
+
+        while opcion != "par" and opcion != "impar":
+            opcion = input("Ingrese par o impar: ").lower()
+
+        suma = numero1 + numero2
+
+        print(f"Los numeros fueron: {numero1} y {numero2}")
+        print(f"La suma es: {suma}")
+
+        suma_es_par = suma % 2 == 0
+        gano = (opcion == "par" and suma_es_par) or (
+            opcion == "impar" and not suma_es_par
+        )
+
+        if gano:
+            print(f"{nombre} ganaste")
+            reg.creditos += apuesta
+            reg.juegos[0][3] += 1
+
+        else:
+            print(f"{nombre} perdiste")
+            reg.creditos -= apuesta
+            reg.juegos[1][3] += 1
+
+        jugadores_logico.seek(posicion, 0)
+        pickle.dump(reg, jugadores_logico)
+        jugadores_logico.flush()
+
+        print(f"Tu credito ahora es: ${reg.creditos}")
 
     input("Presione enter para continuar...")
 
 
-def copiar_arreglo(origen, cantidad):
-    copia = [None] * MAX_JUGADORES
-    i = 0
+def contar_jugadores():
+    cantidad = 0
+    tamanio = os.path.getsize(JUGADORES_FISICO)
 
-    while i < cantidad:
-        copia[i] = origen[i]
-        i += 1
+    jugadores_logico.seek(0, 0)
 
-    return copia
+    while jugadores_logico.tell() < tamanio:
+        pickle.load(jugadores_logico)
+        cantidad += 1
+
+    return cantidad
 
 
-def ordenar_y_mostrar(nombres, valores, cantidad, descendente):
-
-    if cantidad == 0:
-        print("Todavia no hay jugadores")
-        return
-
+def ordenar_y_mostrar(nombres, valores, cantidad):
     i = 0
 
     while i < cantidad - 1:
@@ -575,16 +863,7 @@ def ordenar_y_mostrar(nombres, valores, cantidad, descendente):
 
         while j < cantidad:
 
-            hay_que_cambiar = False
-
-            if descendente:
-                if valores[i] < valores[j]:
-                    hay_que_cambiar = True
-            else:
-                if valores[i] > valores[j]:
-                    hay_que_cambiar = True
-
-            if hay_que_cambiar:
+            if valores[i] < valores[j]:
                 aux = valores[i]
                 valores[i] = valores[j]
                 valores[j] = aux
@@ -600,185 +879,382 @@ def ordenar_y_mostrar(nombres, valores, cantidad, descendente):
     i = 0
 
     while i < cantidad:
-        print(i + 1, "-", nombres[i], ":", valores[i])
+        print(f"{i + 1} - {nombres[i]}: ${valores[i]}")
         i += 1
+
+
+def reporte_creditos():
+    cantidad = contar_jugadores()
+
+    if cantidad == 0:
+        print("Todavia no hay jugadores")
+
+    else:
+
+        nombres = [""] * cantidad
+        creditos = [0.0] * cantidad
+
+        jugadores_logico.seek(0, 0)
+        i = 0
+
+        while i < cantidad:
+            reg = pickle.load(jugadores_logico)
+            nombres[i] = reg.nombre.strip()
+            creditos[i] = reg.creditos
+            i += 1
+
+        print("\n[*] Jugadores ordenados por credito")
+        ordenar_y_mostrar(nombres, creditos, cantidad)
+
+
+def reporte_jugador():
+    nombre = input("Ingrese el nombre del jugador: ").strip()
+
+    posicion = buscar_nombre(nombre)
+
+    if posicion == -1:
+        print("Ese jugador no existe")
+
+    else:
+
+        reg = leer_jugador(posicion)
+        jugo_algo = False
+
+        print(f"\nJuegos jugados por {nombre}")
+
+        juego = 0
+
+        while juego < 4:
+
+            ganadas = reg.juegos[0][juego]
+            perdidas = reg.juegos[1][juego]
+
+            if ganadas + perdidas > 0:
+                jugo_algo = True
+                print(f"\n[*] {NOMBRES_JUEGOS[juego]}")
+                print(f"Ganadas: {ganadas}")
+                print(f"Perdidas: {perdidas}")
+
+            juego += 1
+
+        if not jugo_algo:
+            print(f"{nombre} todavia no tiene partidas registradas")
+
+        print(f"\nCreditos: ${reg.creditos}")
 
 
 def reporte():
 
     opcion = ""
 
-    while opcion != "e":
+    while opcion != "c":
 
         clear()
 
         print("""
     ===== REPORTE =====
 
-    [*] A. Ranking de victorias por juego
+    [*] A. Jugadores ordenados por credito
     [*] B. Juegos jugados por un jugador
-    [*] C. Jugadores de par o impar segun su credito
-    [*] D. Racha de un jugador en mayor o menor
-    [*] E. Volver al menu principal
+    [*] C. Volver al menu principal
     """)
 
         opcion = input("Ingrese una opcion: ").lower()
 
-        while opcion not in ("a", "b", "c", "d", "e"):
+        while opcion not in ("a", "b", "c"):
+            print("Opcion invalida")
             opcion = input("Ingrese una opcion: ").lower()
 
         if opcion == "a":
-
-            print("\n[*] Numero secreto")
-            ordenar_y_mostrar(
-                copiar_arreglo(jugadores, cantidad_jugadores),
-                copiar_arreglo(secreto_ganadas, cantidad_jugadores),
-                cantidad_jugadores,
-                True,
-            )
-
-            print("\n[*] BlackJack")
-            ordenar_y_mostrar(
-                copiar_arreglo(jugadores, cantidad_jugadores),
-                copiar_arreglo(blackjack_ganadas, cantidad_jugadores),
-                cantidad_jugadores,
-                True,
-            )
-
-            print("\n[*] Par o impar")
-            ordenar_y_mostrar(
-                copiar_arreglo(jugadores, cantidad_jugadores),
-                copiar_arreglo(parimpar_aciertos, cantidad_jugadores),
-                cantidad_jugadores,
-                True,
-            )
-
+            reporte_creditos()
             print()
             input("Presione enter para continuar...")
 
         elif opcion == "b":
-
-            nombre = input("Ingrese el nombre del jugador: ")
-
-            indice = buscar_jugador(nombre)
-
-            if indice == -1:
-                print("Ese jugador no existe")
-
-            else:
-
-                jugo_algo = False
-
-                print("\nJuegos jugados por", nombre)
-
-                if mayor_menor_jugadas[indice] > 0:
-                    jugo_algo = True
-                    print("\n[*] Mayor o menor")
-                    print("Partidas:", mayor_menor_jugadas[indice])
-                    print("Mejor racha:", rachas_mayor_menor[indice])
-
-                if secreto_jugadas[indice] > 0:
-                    jugo_algo = True
-                    print("\n[*] Numero secreto")
-                    print("Partidas:", secreto_jugadas[indice])
-                    print("Ganadas:", secreto_ganadas[indice])
-                    print("Perdidas:", secreto_perdidas[indice])
-
-                if blackjack_jugadas[indice] > 0:
-                    jugo_algo = True
-                    print("\n[*] BlackJack")
-                    print("Partidas:", blackjack_jugadas[indice])
-                    print("Ganadas:", blackjack_ganadas[indice])
-
-                if parimpar_jugadas[indice] > 0:
-                    jugo_algo = True
-                    print("\n[*] Par o impar")
-                    print("Partidas:", parimpar_jugadas[indice])
-                    print("Aciertos:", parimpar_aciertos[indice])
-                    print("Credito: $", creditos[indice])
-
-                if not jugo_algo:
-                    print(nombre, "todavia no jugo a ningun juego")
-
+            reporte_jugador()
             print()
             input("Presione enter para continuar...")
 
-        elif opcion == "c":
 
-            nombres_parimpar = [""] * MAX_JUGADORES
-            creditos_parimpar = [0] * MAX_JUGADORES
-            cantidad_parimpar = 0
+def pedir_contrasena():
+    intentos = 0
+    correcta = False
 
-            i = 0
+    while intentos < INTENTOS_CONTRASENA and not correcta:
+        contrasena = pwinput.pwinput("Ingrese la contrasena: ", mask="*")
+        intentos += 1
 
-            while i < cantidad_jugadores:
-                if parimpar_jugadas[i] > 0:
-                    nombres_parimpar[cantidad_parimpar] = jugadores[i]
-                    creditos_parimpar[cantidad_parimpar] = creditos[i]
-                    cantidad_parimpar += 1
-                i += 1
+        if contrasena == CONTRASENA:
+            correcta = True
+        else:
+            print(f"Contrasena incorrecta. Intentos restantes: {INTENTOS_CONTRASENA - intentos}")
 
-            print("\n[*] Jugadores de par o impar segun su credito")
+    return correcta
 
-            ordenar_y_mostrar(
-                nombres_parimpar, creditos_parimpar, cantidad_parimpar, False
-            )
 
-            print()
-            input("Presione enter para continuar...")
+def listar_categorias(solo_activas):
+    cantidad = 0
+    tamanio = os.path.getsize(CATEGORIAS_FISICO)
 
-        elif opcion == "d":
+    categoria_logico.seek(0, 0)
 
-            nombre = input("Ingrese el nombre del jugador: ")
+    while categoria_logico.tell() < tamanio:
+        reg = pickle.load(categoria_logico)
 
-            indice = buscar_jugador(nombre)
+        if not solo_activas or reg.estado == "A":
+            print(f"    {reg.nro_categoria.strip()} - {reg.nombre_categoria.strip()}")
+            cantidad += 1
 
-            if indice == -1:
-                print("Ese jugador no existe")
+    return cantidad
 
-            else:
-                if mayor_menor_jugadas[indice] == 0:
-                    print(nombre, "todavia no jugo al mayor o menor")
-                else:
-                    print(
-                        "La racha de",
-                        nombre,
-                        "en mayor o menor es:",
-                        rachas_mayor_menor[indice],
-                    )
 
-            print()
-            input("Presione enter para continuar...")
+def pedir_posicion_categoria(solo_activas):
+    posicion = -1
 
-def admin():
-    contrasena = pwinput.pwinput("Ingrese la contrasena: ", mask="*")
-    if contrasena != CONTRASENA:
-        return -1
-    option = ""
+    while posicion == -1:
 
-    print("""
-    [*] A. Categoria - Modificacion
-    [*] B. Categoria - Alta
-    [*] C. Categoria Baja
-    [*] D. Opciones - Consulta
-    [*] E. Opciones Alta
+        try:
+
+            nro_categoria = int(input("Ingrese el numero de categoria: "))
+            posicion = buscar_categoria_por_numero(nro_categoria)
+
+            if posicion == -1:
+                print("No existe una categoria con ese numero")
+
+            elif solo_activas:
+                categoria_logico.seek(posicion, 0)
+                reg = pickle.load(categoria_logico)
+
+                if reg.estado != "A":
+                    print("Esa categoria no esta activa")
+                    posicion = -1
+
+        except ValueError:
+            print("Ingrese un entero valido")
+
+    return posicion
+
+
+def alta_categoria():
+    reg = categoria_input()
+
+    categoria_logico.seek(0, 2)
+    pickle.dump(reg, categoria_logico)
+    categoria_logico.flush()
+
+    print(f"Categoria {reg.nro_categoria.strip()} - {reg.nombre_categoria.strip()} dada de alta")
+
+
+def modificar_categoria():
+    print("Categorias activas:")
+
+    if listar_categorias(True) == 0:
+        print("No hay categorias activas")
+
+    else:
+
+        posicion = pedir_posicion_categoria(True)
+
+        categoria_logico.seek(posicion, 0)
+        reg = pickle.load(categoria_logico)
+
+        print(f"Nombre actual: {reg.nombre_categoria.strip()}")
+        nombre = pedir_nombre_categoria()
+        reg.nombre_categoria = nombre.ljust(30, " ")
+
+        categoria_logico.seek(posicion, 0)
+        pickle.dump(reg, categoria_logico)
+        categoria_logico.flush()
+
+        print(f"Categoria {reg.nro_categoria.strip()} modificada")
+
+
+def baja_categoria():
+    print("Categorias activas:")
+
+    if listar_categorias(True) == 0:
+        print("No hay categorias activas")
+
+    else:
+
+        posicion = pedir_posicion_categoria(True)
+
+        categoria_logico.seek(posicion, 0)
+        reg = pickle.load(categoria_logico)
+        reg.estado = "I"
+
+        categoria_logico.seek(posicion, 0)
+        pickle.dump(reg, categoria_logico)
+        categoria_logico.flush()
+
+        print(f"Categoria {reg.nro_categoria.strip()} - {reg.nombre_categoria.strip()} dada de baja")
+
+
+def alta_opcion():
+    print("Categorias activas:")
+
+    if listar_categorias(True) == 0:
+        print("Antes de registrar opciones se deben dar de alta categorias")
+
+    else:
+
+        posicion = pedir_posicion_categoria(True)
+
+        categoria_logico.seek(posicion, 0)
+        categoria = pickle.load(categoria_logico)
+
+        print(f"Pregunta: {categoria.pregunta.strip()}")
+
+        otra = "s"
+
+        while otra == "s":
+
+            reg = opciones_input(categoria.nro_categoria)
+
+            opciones_logico.seek(0, 2)
+            pickle.dump(reg, opciones_logico)
+            opciones_logico.flush()
+
+            print(f"Opcion {reg.nro_opcion.strip()} dada de alta")
+
+            otra = input("Cargar otra opcion en esta categoria? (s/n): ").lower()
+
+            while otra != "s" and otra != "n":
+                print("Opcion invalida")
+                otra = input("Cargar otra opcion en esta categoria? (s/n): ").lower()
+
+
+def consultar_opciones():
+    print("Categorias:")
+
+    if listar_categorias(False) == 0:
+        print("No hay categorias cargadas")
+
+    else:
+
+        posicion = pedir_posicion_categoria(False)
+
+        categoria_logico.seek(posicion, 0)
+        categoria = pickle.load(categoria_logico)
+        nro_categoria = int(categoria.nro_categoria.strip())
+
+        print(f"\nPregunta: {categoria.pregunta.strip()}")
+
+        cantidad = 0
+        tamanio = os.path.getsize(OPCIONES_FISICO)
+
+        opciones_logico.seek(0, 0)
+
+        while opciones_logico.tell() < tamanio:
+            reg = pickle.load(opciones_logico)
+
+            if int(reg.nro_categoria.strip()) == nro_categoria:
+                print(f"    {reg.objeto.strip()}: {reg.valor.strip()}")
+                cantidad += 1
+
+        if cantidad == 0:
+            print("La categoria no tiene opciones cargadas")
+
+
+def administrar_categorias():
+    opcion = ""
+
+    while opcion != "4":
+
+        clear()
+
+        print("""
+    ===== ADMINISTRAR CATEGORIAS =====
+
+    [*] 1. Alta
+    [*] 2. Modificacion
+    [*] 3. Baja
+    [*] 4. Volver
     """)
 
-    while option not in ("a", "b", "c", "d", "e"):
-        option = input("Ingrese una opcion valida: ").lower()
+        opcion = input("Ingrese una opcion: ")
 
-    if option == "a":
-        pass
-    elif option == "b":
-        pass
-    elif option == "c":
-        pass
-    elif option == "d":
-        pass
-    elif option == "e":
-        pass
+        while opcion not in ("1", "2", "3", "4"):
+            print("Opcion invalida")
+            opcion = input("Ingrese una opcion: ")
 
-    return 0
+        if opcion == "1":
+            alta_categoria()
+            input("Presione enter para continuar...")
+
+        elif opcion == "2":
+            modificar_categoria()
+            input("Presione enter para continuar...")
+
+        elif opcion == "3":
+            baja_categoria()
+            input("Presione enter para continuar...")
+
+
+def administrar_opciones():
+    opcion = ""
+
+    while opcion != "3":
+
+        clear()
+
+        print("""
+    ===== ADMINISTRAR OPCIONES =====
+
+    [*] 1. Alta
+    [*] 2. Consulta
+    [*] 3. Volver
+    """)
+
+        opcion = input("Ingrese una opcion: ")
+
+        while opcion not in ("1", "2", "3"):
+            print("Opcion invalida")
+            opcion = input("Ingrese una opcion: ")
+
+        if opcion == "1":
+            alta_opcion()
+            input("Presione enter para continuar...")
+
+        elif opcion == "2":
+            consultar_opciones()
+            input("Presione enter para continuar...")
+
+
+def admin():
+
+    if not pedir_contrasena():
+        print(f"Supero los {INTENTOS_CONTRASENA} intentos de ingresar contrasena, salga e intente nuevamente")
+        input("Presione enter para continuar...")
+
+    else:
+
+        opcion = ""
+
+        while opcion != "3":
+
+            clear()
+
+            print("""
+    ===== ADMINISTRACION DE JUEGOS =====
+
+    [*] 1. Administrar Categorias
+    [*] 2. Administrar Opciones
+    [*] 3. Volver
+    """)
+
+            opcion = input("Ingrese una opcion: ")
+
+            while opcion not in ("1", "2", "3"):
+                print("Opcion invalida")
+                opcion = input("Ingrese una opcion: ")
+
+            if opcion == "1":
+                administrar_categorias()
+
+            elif opcion == "2":
+                administrar_opciones()
+
 
 def main():
 
@@ -827,7 +1303,6 @@ def main():
             admin()
 
         elif option == "g":
-
             clear()
 
             print("""
@@ -839,6 +1314,10 @@ def main():
     """)
 
             input("Presione enter para salir...")
+
+    categoria_logico.close()
+    opciones_logico.close()
+    jugadores_logico.close()
 
 
 if __name__ == '__main__':
