@@ -11,7 +11,6 @@ import os
 import random
 import pickle
 import pwinput
-from pathlib import Path
 
 
 class CategoriaRegistro:
@@ -224,11 +223,11 @@ CONTRASENA = "admin123"
 INTENTOS_CONTRASENA = 3
 
 
-RUTA = Path(__file__).resolve().parent
+RUTA = os.path.dirname(os.path.abspath(__file__))
 
-CATEGORIAS_FISICO = RUTA / "Categorias.dat"
-OPCIONES_FISICO = RUTA / "Opciones.dat"
-JUGADORES_FISICO = RUTA / "Jugadores.dat"
+CATEGORIAS_FISICO = os.path.join(RUTA, "Categorias.dat")
+OPCIONES_FISICO = os.path.join(RUTA, "Opciones.dat")
+JUGADORES_FISICO = os.path.join(RUTA, "Jugadores.dat")
 
 categoria_logico = open(CATEGORIAS_FISICO, "r+b")
 opciones_logico = open(OPCIONES_FISICO, "r+b")
