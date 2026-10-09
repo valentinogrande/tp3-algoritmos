@@ -1257,7 +1257,7 @@ def administrar_opciones():
 
 def admin():
     if not pedir_contrasena():
-        print(f"{DARK_RED}Supero los 3 intentos{RESET}")
+        print(f"{DARK_RED}Superó los 3 intentos de ingresar contraseña, salga e intente nuevamente{RESET}")
         input("Presione enter para continuar...")
 
     else:
