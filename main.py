@@ -978,8 +978,6 @@ def reporte_jugador():
                 print(f"Ganadas: {ganadas}")
                 print(f"Perdidas: {perdidas}")
 
-            juego += 1
-
         print(f"\nCreditos: {YELLOW}${reg.creditos}{RESET}")
 
 
